@@ -1,0 +1,391 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// =========================================================================
+// MODULE 1: USER & AUTHENTICATION
+// =========================================================================
+
+model User {
+  id            Int       @id @default(autoincrement())
+  email         String    @unique @db.VarChar(100)
+  password      String    @db.VarChar(255)  // bcrypt hash
+
+  // Data Demografi (sumber Data Mining)
+  nama          String    @db.VarChar(100)
+  umur          Int
+  gender        String    @db.VarChar(20)   // "Laki-laki" / "Perempuan"
+  alamat        String    @db.Text
+  kotaAsal      String?   @db.VarChar(50)   // Auto-extract dari alamat
+  no_telp       String    @db.VarChar(20)
+
+  role          Role      @default(MEMBER)
+  isActive      Boolean   @default(true)
+
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  ledGroups        Group[]              @relation("GroupLeader")
+  memberships      GroupMember[]
+  bwmAnswers       UserBwmAnswer[]
+  computedWeights  UserCriteriaWeight[]
+
+  @@index([email])
+  @@index([gender, umur])
+  @@index([kotaAsal])
+  @@index([role])
+}
+
+enum Role {
+  OWNER     // Pemilik travel agent
+  STAFF     // Karyawan operasional
+  LEADER    // Ketua rombongan
+  MEMBER    // Anggota rombongan
+}
+
+// =========================================================================
+// MODULE 2: GROUP & MEMBERSHIP (riwayat grup user)
+// =========================================================================
+
+model Group {
+  id              Int       @id @default(autoincrement())
+  groupCode       String    @unique @db.VarChar(10)  // JJ-XXXX
+  groupName       String    @db.VarChar(100)
+  totalQuota      Int                                 // Min 2
+
+  // Pre-Filtering & Durasi
+  activeCriteria  String    @db.Text                 // JSON: ["K2","K3","K8","K1","K5"]
+  durasiTour      Int                                 // 1, 2, or 3 hari
+
+  // Leader
+  leaderId        Int
+  leader          User      @relation("GroupLeader", fields: [leaderId], references: [id])
+
+  // Status
+  status          GStatus   @default(IN_PROGRESS)
+
+  // Booking Final
+  finalPackageId  Int?
+  finalPackage    TourPackage? @relation("FinalPackage", fields: [finalPackageId], references: [id])
+  bookingDate     DateTime?
+
+  // Relasi
+  members         GroupMember[]
+  criteriaWeights GroupCriteriaWeight[]
+  topsisResults   GroupTopsisResult[]
+  tourPackages    TourPackage[]         @relation("GroupPackages")  // 3 auto-generated
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([leaderId])
+  @@index([status])
+  @@index([finalPackageId])
+}
+
+// JOIN TABLE: many-to-many User <-> Group
+model GroupMember {
+  id            Int       @id @default(autoincrement())
+  groupId       Int
+  group         Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId        Int
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  hasSubmitted  Boolean   @default(false)
+  joinedAt      DateTime  @default(now())
+  submittedAt   DateTime?
+
+  // Untuk Leader keluarkan anggota
+  removedAt     DateTime?
+  removedBy     Int?      // userId Leader yang mengeluarkan
+
+  @@unique([groupId, userId])
+  @@index([groupId])
+  @@index([userId])
+  @@index([hasSubmitted])
+}
+
+enum GStatus {
+  IN_PROGRESS   // Belum semua anggota submit
+  COMPLETED     // Semua submit, hasil sudah dikalkulasi, 3 paket sudah di-generate
+  BOOKED        // Leader sudah Ketuk Palu paket final
+}
+
+// =========================================================================
+// MODULE 3: MASTER DESTINATIONS (75 destinasi)
+// =========================================================================
+
+model Destination {
+  id                  Int       @id @default(autoincrement())
+  nama                String    @db.VarChar(150)
+  kategori            String    @db.VarChar(30)        // Alam, Budaya, Edukasi, Petualangan, Relaksasi
+  wilayah             String    @db.VarChar(50)        // Sleman, Bantul, Kota, Gunungkidul, Kulon Progo, Magelang
+  hargaTiket          Int
+  rating              Float     @default(4.5)
+  imageUrl            String    @db.Text               // /images/destinations/<slug>.jpg
+  deskripsi           String?   @db.Text
+  fasilitas           String?   @db.Text               // JSON array
+
+  // Spesifikasi Pak Ucup (Ergonomi)
+  aksesBus            Boolean   @default(false)
+  bolehDrone          Boolean   @default(false)
+  jarakPusat          Float                            // km dari Malioboro
+  kulinerLokal        String?   @db.VarChar(255)
+
+  // Field untuk Auto-Package Generation
+  latitude            Float                            // GPS coordinate
+  longitude           Float
+  waktuKunjunganIdeal WaktuKunjungan @default(FLEKSIBEL)
+  durasiKunjungan     Float     @default(2.0)         // Estimasi jam
+
+  // Field untuk Halaman Detail Wisata (v4.1)
+  alamatLengkap       String    @db.VarChar(255)      // Alamat lengkap untuk Google Maps
+  jamBuka             String    @db.VarChar(10)       // Format "HH:MM", contoh "06:00"
+  jamTutup            String    @db.VarChar(10)       // Format "HH:MM", contoh "17:00"
+  tipsRombongan       String    @db.Text              // JSON array 3-4 string tips
+  deskripsiPanjang    String    @db.Text              // Paragraf detail 2-3 kalimat untuk halaman detail
+
+  scores              DestinationScore[]
+  packageDetails      TourPackageDetail[]
+  topsisResults       GroupTopsisResult[]
+
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([kategori])
+  @@index([wilayah])
+  @@index([waktuKunjunganIdeal])
+}
+
+enum WaktuKunjungan {
+  PAGI        // 06:00-11:00 - Candi, museum, pegunungan
+  SIANG       // 11:00-15:00 - Museum indoor, kuliner, pantai
+  SORE        // 15:00-18:00 - Pantai sunset, tebing, spot foto
+  MALAM       // 18:00-22:00 - Malioboro, Bukit Bintang
+  FLEKSIBEL   // Bisa kapan saja
+}
+
+// =========================================================================
+// MODULE 4: SKALA TOPSIS (75 x 40 = 3000 rows)
+// =========================================================================
+
+model DestinationScore {
+  id              Int         @id @default(autoincrement())
+  destinationId   Int
+  destination     Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+
+  kriteriaKey     String      @db.VarChar(5)          // K1..K8
+  subCriteriaKey  String      @db.VarChar(10)         // K1_S1..K8_S5
+  scoreValue      Int                                  // 1-5
+
+  @@unique([destinationId, subCriteriaKey])
+  @@index([destinationId])
+  @@index([subCriteriaKey])
+}
+
+// =========================================================================
+// MODULE 5: BWM NESTED 2-LEVEL ENGINE
+// =========================================================================
+
+model UserBwmAnswer {
+  id              Int    @id @default(autoincrement())
+  userId          Int
+  user            User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groupId         Int
+
+  // Level BWM Nested
+  level           BwmLevel                            // CRITERIA atau SUBCRITERIA
+  parentKriteria  String?  @db.VarChar(5)             // K1-K8 (hanya filled jika level=SUBCRITERIA)
+
+  bestCriteria    String   @db.VarChar(10)            // K1..K8 atau K1_S1..K8_S5
+  worstCriteria   String   @db.VarChar(10)
+  comparisonType  String   @db.VarChar(20)            // BEST_TO_OTHERS / OTHERS_TO_WORST
+  targetCriteria  String   @db.VarChar(10)
+  scoreValue      Int                                  // Saaty 1-9
+
+  isInconsistent    Boolean @default(false)           // Flag jika CR > 0.25
+  consistencyRatio  Float?
+  submittedAt     DateTime @default(now())
+
+  @@index([userId])
+  @@index([groupId])
+  @@index([level])
+}
+
+enum BwmLevel {
+  CRITERIA      // BWM antar 8 kriteria utama
+  SUBCRITERIA   // BWM antar 5 subkriteria dalam 1 kriteria
+}
+
+model UserCriteriaWeight {
+  id              Int    @id @default(autoincrement())
+  userId          Int
+  user            User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groupId         Int
+
+  // Level untuk bobot
+  level           BwmLevel
+  parentKriteria  String?  @db.VarChar(5)              // Kalau SUBCRITERIA, dia anak dari kriteria mana
+
+  kriteriaKey     String   @db.VarChar(10)             // K1..K8 atau K1_S1..K8_S5
+  computedWeight  Float                                 // 0-1, hasil BWM Linear Programming
+
+  calculatedAt    DateTime @default(now())
+
+  @@unique([userId, groupId, level, kriteriaKey])
+  @@index([userId])
+  @@index([kriteriaKey])
+  @@index([level])
+}
+
+model GroupCriteriaWeight {
+  id              Int    @id @default(autoincrement())
+  groupId         Int
+  group           Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  level           BwmLevel
+  parentKriteria  String? @db.VarChar(5)
+  kriteriaKey     String  @db.VarChar(10)
+  weight          Float                                 // Geometric mean dari semua anggota
+
+  calculatedAt    DateTime @default(now())
+
+  @@unique([groupId, level, kriteriaKey])
+  @@index([groupId])
+}
+
+model GroupTopsisResult {
+  id            Int @id @default(autoincrement())
+  groupId       Int
+  group         Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  destinationId Int
+  destination   Destination @relation(fields: [destinationId], references: [id])
+
+  ciScore       Float                                  // C_i* TOPSIS (0-1)
+  ranking       Int                                    // 1..75
+  calculatedAt  DateTime @default(now())
+
+  @@unique([groupId, destinationId])
+  @@index([groupId, ranking])
+}
+
+// =========================================================================
+// MODULE 6: HOTEL & KULINER MASTER (untuk Auto-Package)
+// =========================================================================
+
+model Hotel {
+  id              Int         @id @default(autoincrement())
+  nama            String      @db.VarChar(150)
+  alamat          String      @db.VarChar(255)
+  wilayah         String      @db.VarChar(50)         // Kota, Sleman, Bantul, Magelang
+
+  // Koordinat untuk geographic proximity
+  latitude        Float
+  longitude       Float
+
+  rating          Float
+  hargaPerMalam   Int
+  fasilitas       String?     @db.Text                // JSON array
+  imageUrl        String?     @db.Text                // /images/lodging/<slug>.jpg
+
+  tier            HotelTier                            // BUDGET / STANDARD / PREMIUM
+
+  packages        TourPackage[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([wilayah])
+  @@index([tier])
+}
+
+enum HotelTier {
+  BUDGET      // < Rp 300rb/malam
+  STANDARD    // Rp 300rb - 800rb/malam
+  PREMIUM     // > Rp 800rb/malam
+}
+
+model Kuliner {
+  id              Int       @id @default(autoincrement())
+  nama            String    @db.VarChar(150)
+  jenis           String    @db.VarChar(50)           // Gudeg, Sate, Bakmi, Kopi, dll
+  alamat          String    @db.VarChar(255)
+
+  // Koordinat untuk pencarian terdekat
+  latitude        Float
+  longitude       Float
+
+  hargaRataRata   Int                                  // Rupiah per porsi
+  rating          Float
+  imageUrl        String?   @db.Text                  // /images/kuliner/<slug>.jpg
+
+  createdAt       DateTime  @default(now())
+
+  @@index([jenis])
+}
+
+// =========================================================================
+// MODULE 7: PAKET WISATA AUTO-GENERATED
+// =========================================================================
+
+model TourPackage {
+  id                  Int       @id @default(autoincrement())
+
+  // Auto-generated per grup (3 variant)
+  groupId             Int
+  group               Group     @relation("GroupPackages", fields: [groupId], references: [id], onDelete: Cascade)
+  variant             PackageVariant                   // HEMAT / STANDARD / PREMIUM
+
+  namaPaket           String    @db.VarChar(150)      // "Paket Hemat 2D1N", dll
+  hargaPerOrang       Decimal   @db.Decimal(10, 2)
+  durasiHari          Int                              // Match dengan Group.durasiTour
+  jenisArmada         String    @db.VarChar(50)       // Bus 35 Seat, Minibus 15 Seat
+
+  // Hotel (auto-selected by algorithm)
+  hotelId             Int
+  hotel               Hotel     @relation(fields: [hotelId], references: [id])
+
+  // Reverse relation untuk Group.finalPackageId
+  bookedByGroups      Group[]   @relation("FinalPackage")
+
+  // Itinerary detail
+  itinerary           TourPackageDetail[]
+
+  generatedAt         DateTime  @default(now())
+
+  @@index([groupId])
+  @@index([variant])
+  @@index([hotelId])
+}
+
+enum PackageVariant {
+  HEMAT       // Hotel Tier Budget
+  STANDARD    // Hotel Tier Standard
+  PREMIUM     // Hotel Tier Premium
+}
+
+// Itinerary detail per paket
+model TourPackageDetail {
+  id              Int         @id @default(autoincrement())
+  tourPackageId   Int
+  tourPackage     TourPackage @relation(fields: [tourPackageId], references: [id], onDelete: Cascade)
+  destinationId   Int
+  destination     Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+
+  hariKe          Int                                  // 1, 2, atau 3
+  urutanRute      Int                                  // 1, 2, 3 (Pagi/Siang/Sore)
+  waktuKunjungan  WaktuKunjungan                       // Snapshot waktu kunjungan
+  estimasiJam     String      @db.VarChar(15)         // "08:00-11:00"
+
+  // Jarak dari titik sebelumnya (hasil Haversine)
+  jarakDariSebelum Float?                              // km, untuk display di UI
+
+  @@unique([tourPackageId, hariKe, urutanRute])       // Maks 3/hari (Ergonomi)
+  @@index([tourPackageId])
+  @@index([destinationId])
+}
