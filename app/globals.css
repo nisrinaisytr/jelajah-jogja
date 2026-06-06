@@ -2,26 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html,
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+* {
+  box-sizing: border-box;
+}
+
+/* Gradient brand (dari 04-design-system.md) */
+.hero-gradient {
+  background: linear-gradient(135deg, #0194f3 0%, #0277c2 100%);
+}
+.orange-gradient {
+  background: linear-gradient(135deg, #ff5e1f 0%, #ff8b4d 100%);
+}
+.admin-gradient {
+  background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);
 }
