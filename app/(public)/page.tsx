@@ -1,12 +1,16 @@
 // app/(public)/page.tsx
-// Landing publik. Server Component: ambil 6 destinasi populer (rating tertinggi) dari DB.
+// Landing publik. Server Component: ambil destinasi populer dari DB untuk hero carousel + grid.
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import PublicNavbar from "@/components/PublicNavbar";
 import DestImage from "@/components/DestImage";
+import HeroCarousel from "@/components/HeroCarousel";
 import { formatRupiah } from "@/lib/destinasi-helpers";
 
-export const dynamic = "force-dynamic"; // selalu ambil data terbaru dari DB
+export const dynamic = "force-dynamic";
+
+// Foto latar hero (ganti ke nama file lain di /public/images/destinations/ kalau mau)
+const HERO_BG = "/images/destinations/candi-prambanan.jpg";
 
 export default async function LandingPage() {
   const populer = await prisma.destination.findMany({
@@ -19,9 +23,13 @@ export default async function LandingPage() {
     <div className="min-h-screen bg-[#F8FAFC]">
       <PublicNavbar />
 
-      {/* HERO */}
-      <section className="hero-gradient text-white">
-        <div className="mx-auto grid max-w-7xl items-center gap-12 px-6 py-16 md:grid-cols-2 md:py-24">
+      {/* HERO — foto wisata di belakang + overlay biru (lebih pekat di kiri agar teks terbaca) */}
+      <section className="relative overflow-hidden text-white">
+        <div className="hero-gradient absolute inset-0" />
+        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('${HERO_BG}')` }} />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0194F3]/95 via-[#0194F3]/80 to-[#0277C2]/55" />
+
+        <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-6 py-16 md:grid-cols-2 md:py-24">
           <div>
             <span className="mb-5 inline-block rounded-full border border-white/30 bg-white/20 px-4 py-1.5 text-xs font-bold backdrop-blur-sm">
               ✨ Sistem Pendukung Keputusan Kolaboratif
@@ -29,7 +37,7 @@ export default async function LandingPage() {
             <h1 className="mb-5 text-4xl font-extrabold leading-tight md:text-5xl lg:text-6xl">
               Pilih Wisata Bareng Tanpa <span className="text-yellow-300">Debat Panjang</span>
             </h1>
-            <p className="mb-8 text-lg leading-relaxed text-blue-100">
+            <p className="mb-8 text-lg leading-relaxed text-blue-50 drop-shadow">
               Platform berbasis BWM-TOPSIS yang menyatukan preferensi seluruh anggota rombongan
               menjadi 1 rekomendasi paket wisata Yogyakarta terbaik.
             </p>
@@ -41,18 +49,12 @@ export default async function LandingPage() {
                 🤝 Gabung Grup
               </Link>
             </div>
-            <p className="mt-4 text-xs text-blue-200">💡 Belum punya akun? Daftar gratis dengan email saat klik tombol di atas.</p>
+            <p className="mt-4 text-xs text-blue-100">💡 Belum punya akun? Daftar gratis dengan email saat klik tombol di atas.</p>
           </div>
-          <div className="relative hidden md:block">
-            <div className="rotate-2 transform rounded-3xl bg-white p-6 shadow-2xl">
-              <div className="mb-4 flex aspect-video items-center justify-center rounded-2xl bg-gradient-to-br from-blue-100 to-blue-200 text-6xl">🏛️</div>
-              <div className="font-bold text-slate-900">Candi Borobudur</div>
-              <div className="mb-2 text-xs text-slate-500">Magelang • 42 km</div>
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-bold text-[#10B981]">★ 4.8</div>
-                <div className="font-bold text-[#FF5E1F]">Rp 50.000</div>
-              </div>
-            </div>
+
+          {/* Carousel 3 destinasi populer (foto asli, bisa digeser) */}
+          <div className="hidden md:block">
+            <HeroCarousel destinations={populer} />
           </div>
         </div>
       </section>
@@ -84,10 +86,10 @@ export default async function LandingPage() {
             <div>
               <span className="mb-1 block text-xs font-bold text-[#FF5E1F]">🔥 POPULER DI JOGJA</span>
               <h2 className="text-2xl font-extrabold text-slate-900 md:text-3xl">Destinasi Paling Diminati</h2>
-              <p className="mt-1 text-sm text-slate-500">6 wisata teratas dari 75 destinasi di sistem</p>
+              <p className="mt-1 text-sm text-slate-500">Wisata teratas pilihan pengunjung</p>
             </div>
             <Link href="/eksplorasi" className="flex items-center gap-1 text-sm font-semibold text-[#0194F3] hover:underline">
-              Lihat Semua 75 Wisata →
+              Lihat Semua →
             </Link>
           </div>
 

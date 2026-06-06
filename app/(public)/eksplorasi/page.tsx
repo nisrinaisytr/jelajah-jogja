@@ -68,8 +68,8 @@ export default function EksplorasiPage() {
       <PublicNavbar />
 
       <div className="mx-auto max-w-7xl px-6 py-8">
-        <h1 className="text-2xl font-extrabold text-slate-900 md:text-3xl">Eksplorasi 75 Wisata Yogyakarta</h1>
-        <p className="mt-1 text-sm text-slate-500">Saring sesuai preferensi & ergonomi rombongan Pak Ucup.</p>
+        <h1 className="text-2xl font-extrabold text-slate-900 md:text-3xl">Eksplorasi Wisata Yogyakarta</h1>
+        <p className="mt-1 text-sm text-slate-500">Temukan dan saring destinasi wisata sesuai preferensimu.</p>
 
         {/* Pil kategori */}
         <div className="mt-5 flex flex-wrap gap-2">
@@ -142,7 +142,7 @@ export default function EksplorasiPage() {
               </div>
 
               <div>
-                <p className="mb-2 text-xs font-bold uppercase text-slate-400">Logistik Pak Ucup</p>
+                <p className="mb-2 text-xs font-bold uppercase text-slate-400">Logistik & Akses</p>
                 <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
                   <input type="checkbox" checked={aksesBus} onChange={(e) => setAksesBus(e.target.checked)} className="accent-[#0194F3]" />
                   🚌 Akses Bus
