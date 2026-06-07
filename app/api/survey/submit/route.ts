@@ -120,7 +120,7 @@ export async function POST(req: Request) {
       prisma.groupMember.count({ where: { groupId: group.id, removedAt: null } }),
       prisma.groupMember.count({ where: { groupId: group.id, removedAt: null, hasSubmitted: true } }),
     ]);
-    const allSubmitted = activeCount >= 2 && activeCount === submittedCount; // min 2 anggota (kolaboratif)
+    const allSubmitted = activeCount === group.totalQuota && submittedCount === activeCount && activeCount >= 2; // kuota penuh + semua submit
 
     // Anggota terakhir submit -> jalankan kalkulasi penuh (agregasi + TOPSIS + 3 paket)
     let calculated = false;

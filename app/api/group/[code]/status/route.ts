@@ -18,7 +18,7 @@ export async function GET(_req: Request, { params }: { params: { code: string } 
       members: {
         where: { removedAt: null },
         orderBy: { joinedAt: "asc" },
-        include: { user: { select: { id: true, nama: true } } },
+        include: { user: { select: { id: true, nama: true, no_telp: true } } },
       },
     },
   });
@@ -29,13 +29,18 @@ export async function GET(_req: Request, { params }: { params: { code: string } 
 
   const members = group.members.map((m) => ({
     nama: m.user.nama,
+    noTelp: m.user.no_telp ?? null,
     hasSubmitted: m.hasSubmitted,
     isLeader: m.user.id === group.leaderId,
     isMe: m.user.id === userId,
   }));
-  const total = members.length;
+  const quota = group.totalQuota;          // target anggota saat grup dibuat
+  const joined = members.length;            // yang sudah bergabung
   const submitted = members.filter((m) => m.hasSubmitted).length;
-  const allSubmitted = total >= 2 && submitted === total; // min 2 anggota
+  // Selesai otomatis HANYA jika kuota terpenuhi & semua mengisi
+  const allSubmitted = joined === quota && submitted === quota;
+  // Leader boleh memulai manual jika semua yang HADIR sudah mengisi (min 2)
+  const canLeaderStart = joined >= 2 && submitted === joined && !allSubmitted;
 
   const calcCount = await prisma.groupTopsisResult.count({ where: { groupId: group.id } });
   const calculated = calcCount > 0;
@@ -65,6 +70,6 @@ export async function GET(_req: Request, { params }: { params: { code: string } 
     groupName: group.groupName,
     groupCode: group.groupCode,
     status: group.status,
-    members, total, submitted, allSubmitted, calculated, top5, packages,
+    members, total: quota, quota, joined, submitted, allSubmitted, canLeaderStart, calculated, top5, packages,
   });
 }

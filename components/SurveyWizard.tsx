@@ -1,6 +1,6 @@
 // components/SurveyWizard.tsx
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 interface Item { key: string; nama: string; emoji?: string }
@@ -32,6 +32,30 @@ export default function SurveyWizard({ groupCode, groupName, criteria }: { group
   const step = steps[idx];
   const isLast = idx === total - 1;
 
+  // --- Simpan & pulihkan progres pengisian (auto-save di browser) ---
+  const LS_KEY = `jj-survey-${groupCode}`;
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    try {
+      const raw = typeof window !== "undefined" ? window.localStorage.getItem(LS_KEY) : null;
+      if (raw) {
+        const s = JSON.parse(raw);
+        if (s.crit) setCrit(s.crit);
+        if (s.subs) setSubs((prev) => ({ ...prev, ...s.subs }));
+        if (typeof s.idx === "number") setIdx(Math.max(0, Math.min(s.idx, total - 1)));
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [LS_KEY]);
+  useEffect(() => {
+    if (!restoredRef.current) return;
+    try {
+      if (typeof window !== "undefined") window.localStorage.setItem(LS_KEY, JSON.stringify({ idx, crit, subs }));
+    } catch {}
+  }, [LS_KEY, idx, crit, subs]);
+
   function setCritField(p: Partial<Picks>) { setCrit((c) => ({ ...c, ...p })); }
   function setSubField(ck: string, p: Partial<Picks>) { setSubs((s) => ({ ...s, [ck]: { ...s[ck], ...p } })); }
 
@@ -61,6 +85,7 @@ export default function SurveyWizard({ groupCode, groupName, criteria }: { group
       const res = await fetch("/api/survey/submit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const data = await res.json();
       if (!res.ok) { setErr(data.error ?? "Gagal menyimpan jawaban"); return; }
+      try { window.localStorage.removeItem(LS_KEY); } catch {}
       setDone(true);
     } catch { setErr("Kesalahan jaringan"); }
     finally { setSubmitting(false); }
