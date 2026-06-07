@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/auth";
 import SiteNavbar from "@/components/SiteNavbar";
 import DestImage from "@/components/DestImage";
 import { formatRupiah, kategoriEmoji } from "@/lib/destinasi-helpers";
@@ -39,6 +40,12 @@ export default async function DetailPage({ params }: { params: { id: string } })
 
   const fasilitas = safeArray(dest.fasilitas);
   const tips = safeArray(dest.tipsRombongan);
+
+  // Tombol CTA menyesuaikan status login (bukan selalu ke /register)
+  const session = await getSession();
+  const isConsumer = !!session.user && ["LEADER", "MEMBER"].includes(session.user.role);
+  const ctaHref = isConsumer ? "/create-group" : "/login";
+  const ctaLabel = isConsumer ? "Buat Grup Tour" : "Login untuk Buat Grup";
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -149,8 +156,8 @@ export default async function DetailPage({ params }: { params: { id: string } })
                 </ul>
               </div>
             )}
-            <Link href="/register" className="orange-gradient block rounded-xl py-3 text-center font-bold text-white shadow-lg transition hover:shadow-xl">
-              👑 Buat Grup dengan Wisata Ini
+            <Link href={ctaHref} className="orange-gradient block rounded-xl py-3 text-center font-bold text-white shadow-lg transition hover:shadow-xl">
+              👑 {ctaLabel}
             </Link>
           </div>
         </aside>

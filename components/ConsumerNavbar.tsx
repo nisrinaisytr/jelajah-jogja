@@ -28,6 +28,7 @@ export default function ConsumerNavbar({ nama }: { nama: string }) {
         <div className="hidden items-center gap-7 text-sm font-semibold text-slate-600 md:flex">
           <Link href="/home" className="hover:text-[#0194F3]">Beranda</Link>
           <Link href="/eksplorasi" className="hover:text-[#0194F3]">Eksplorasi</Link>
+          <Link href="/profile/history" className="hover:text-[#0194F3]">Riwayat Grup</Link>
         </div>
 
         {/* Avatar dropdown */}

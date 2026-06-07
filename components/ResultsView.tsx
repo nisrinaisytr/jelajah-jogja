@@ -16,17 +16,21 @@ interface Pkg {
 }
 interface Top { ranking: number; ciScore: number; nama: string; kategori: string; wilayah: string }
 
-// Warna per huruf paket (A/B/C) — pembeda visual antar OPSI rute (bukan tier harga)
-const LETTER_STYLE: Record<string, { teks: string; border: string; chipBg: string }> = {
-  A: { teks: "text-[#10B981]", border: "border-[#10B981]", chipBg: "bg-[#ECFDF5] text-[#10B981]" },
-  B: { teks: "text-[#0194F3]", border: "border-[#0194F3]", chipBg: "bg-[#E6F4FE] text-[#0194F3]" },
-  C: { teks: "text-[#FF5E1F]", border: "border-[#FF5E1F]", chipBg: "bg-[#FFF1EC] text-[#FF5E1F]" },
+const LETTER_STYLE: Record<string, { teks: string; border: string; chipBg: string; badge: string }> = {
+  A: { teks: "text-[#10B981]", border: "border-[#10B981]", chipBg: "bg-[#ECFDF5] text-[#10B981]", badge: "bg-[#10B981]" },
+  B: { teks: "text-[#0194F3]", border: "border-[#0194F3]", chipBg: "bg-[#E6F4FE] text-[#0194F3]", badge: "bg-[#0194F3]" },
+  C: { teks: "text-[#FF5E1F]", border: "border-[#FF5E1F]", chipBg: "bg-[#FFF1EC] text-[#FF5E1F]", badge: "bg-[#FF5E1F]" },
 };
 function letterOf(nama: string) { const m = nama.match(/Paket\s+([ABC])/i); return m ? m[1].toUpperCase() : "A"; }
+function waLink(phone: string, text: string) {
+  let p = (phone || "").replace(/\D/g, "");
+  if (p.startsWith("0")) p = "62" + p.slice(1);
+  return `https://wa.me/${p}?text=${encodeURIComponent(text)}`;
+}
 
-export default function ResultsView({ groupCode, groupName, status, isLeader, finalPackageId, packages, top10, members }: {
+export default function ResultsView({ groupCode, groupName, status, isLeader, finalPackageId, packages, top10, members, leaderNama, leaderPhone }: {
   groupCode: string; groupName: string; status: string; isLeader: boolean; finalPackageId: number | null;
-  packages: Pkg[]; top10: Top[]; members: { nama: string; isLeader: boolean }[];
+  packages: Pkg[]; top10: Top[]; members: { nama: string; isLeader: boolean }[]; leaderNama: string; leaderPhone: string | null;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState<number | null>(packages[0]?.id ?? null);
@@ -36,6 +40,7 @@ export default function ResultsView({ groupCode, groupName, status, isLeader, fi
   const [err, setErr] = useState("");
 
   const maxCi = Math.max(...top10.map((t) => t.ciScore), 0.0001);
+  const medal = (r: number) => (r === 1 ? "🥇" : r === 2 ? "🥈" : r === 3 ? "🥉" : `${r}.`);
 
   async function ketukPalu(pkg: Pkg) {
     if (!confirm(`Pilih "${pkg.namaPaket}" sebagai paket final grup? Keputusan ini final dan akan terlihat oleh semua anggota.`)) return;
@@ -56,7 +61,6 @@ export default function ResultsView({ groupCode, groupName, status, isLeader, fi
     <main className="mx-auto max-w-6xl px-6 py-8">
       <Link href="/home" className="text-sm font-semibold text-slate-500 hover:underline">← Beranda</Link>
 
-      {/* Banner */}
       <div className="mt-3 rounded-2xl bg-gradient-to-r from-[#0194F3] to-[#0277C2] p-6 text-white shadow-lg">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -74,7 +78,16 @@ export default function ResultsView({ groupCode, groupName, status, isLeader, fi
 
       {err && <div className="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{err}</div>}
       {!booked && !isLeader && (
-        <div className="mt-4 rounded-xl bg-[#FEF3C7] px-4 py-3 text-sm font-semibold text-[#92400E]">⏳ Menunggu Leader memilih paket final.</div>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[#FEF3C7] px-4 py-3 text-sm font-semibold text-[#92400E]">
+          <span>⏳ Menunggu Leader memilih paket final.</span>
+          {leaderPhone && (
+            <a href={waLink(leaderPhone, `Halo ${leaderNama}, hasil paket grup "${groupName}" (${groupCode}) sudah siap. Yuk ketuk palu pilih paket finalnya! 🙌`)}
+              target="_blank" rel="noopener noreferrer"
+              className="rounded-lg bg-[#25D366] px-3 py-1.5 text-xs font-bold text-white hover:brightness-95">
+              📱 Ingatkan Leader via WhatsApp
+            </a>
+          )}
+        </div>
       )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
@@ -94,7 +107,7 @@ export default function ResultsView({ groupCode, groupName, status, isLeader, fi
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className={`text-lg font-extrabold ${st.teks}`}>{p.namaPaket}</span>
-                      {isFinal && <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white ${letter === "A" ? "bg-[#10B981]" : letter === "B" ? "bg-[#0194F3]" : "bg-[#FF5E1F]"}`}>✅ TERPILIH</span>}
+                      {isFinal && <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white ${st.badge}`}>✅ TERPILIH</span>}
                     </div>
                     <div className="mt-1 text-xs text-slate-500">{allStops.length} destinasi • {p.durasiHari} hari • {p.jenisArmada}</div>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -109,37 +122,41 @@ export default function ResultsView({ groupCode, groupName, status, isLeader, fi
 
                 {expanded && (
                   <div className="border-t border-slate-100 p-5">
-                    <p className="mb-4 text-xs text-slate-500">Jalur ini menyusun destinasi peringkat teratas yang searah ({wilayahList.join(", ")}) agar perjalanan efisien.</p>
+                    <p className="mb-4 text-xs text-slate-500">Rute disusun berurutan (nearest-neighbor) agar perjalanan antar destinasi efisien.</p>
 
-                    {/* Itinerary per hari */}
                     {p.days.map((d) => (
                       <div key={d.hari} className="mb-4">
                         <div className="mb-2 text-sm font-bold text-slate-800">📅 Hari {d.hari}</div>
-                        <div className="space-y-2">
-                          {d.stops.map((s) => (
-                            <div key={s.urutanRute} className="flex items-center gap-3 rounded-xl bg-slate-50 p-2.5">
-                              <div className="h-12 w-16 shrink-0 overflow-hidden rounded-lg">
-                                <DestImage src={s.dest.imageUrl} alt={s.dest.nama} kategori={s.dest.kategori} className="h-full w-full" />
+                        <div>
+                          {d.stops.map((s, i) => (
+                            <div key={s.urutanRute}>
+                              {/* Konektor jarak antar destinasi */}
+                              <div className="flex items-center gap-1.5 py-1 pl-2 text-[11px] font-semibold text-slate-400">
+                                <span>↓</span>
+                                <span>~{s.jarakDariSebelum ?? 0} km {i === 0 ? "dari hotel" : "dari lokasi sebelumnya"}</span>
                               </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="truncate text-sm font-bold text-slate-800">{s.urutanRute}. {s.dest.nama}</div>
-                                <div className="text-[11px] text-slate-500">🕐 {s.estimasiJam} • 📍 {s.dest.wilayah}{s.jarakDariSebelum != null ? ` • ${s.jarakDariSebelum} km` : ""}</div>
+                              <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-2.5">
+                                <div className="h-12 w-16 shrink-0 overflow-hidden rounded-lg">
+                                  <DestImage src={s.dest.imageUrl} alt={s.dest.nama} kategori={s.dest.kategori} className="h-full w-full" />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="truncate text-sm font-bold text-slate-800">{s.urutanRute}. {s.dest.nama}</div>
+                                  <div className="text-[11px] text-slate-500">🕐 {s.estimasiJam} • 📍 {s.dest.wilayah}</div>
+                                </div>
+                                <div className="shrink-0 text-xs font-bold text-[#FF5E1F]">{formatRupiah(s.dest.hargaTiket)}</div>
                               </div>
-                              <div className="shrink-0 text-xs font-bold text-[#FF5E1F]">{formatRupiah(s.dest.hargaTiket)}</div>
                             </div>
                           ))}
                         </div>
                       </div>
                     ))}
 
-                    {/* Hotel */}
                     <div className="mb-4 rounded-xl border border-slate-100 p-3">
                       <div className="text-xs font-bold uppercase text-slate-400">🏨 Menginap</div>
                       <div className="mt-1 text-sm font-bold text-slate-800">{p.hotel.nama}</div>
                       <div className="text-[11px] text-slate-500">⭐ {p.hotel.rating} • {p.hotel.wilayah} • {formatRupiah(p.hotel.hargaPerMalam)}/malam</div>
                     </div>
 
-                    {/* Kuliner */}
                     {p.kuliner.length > 0 && (
                       <div className="rounded-xl border border-slate-100 p-3">
                         <div className="mb-2 text-xs font-bold uppercase text-slate-400">🍴 Kuliner Terdekat</div>
@@ -151,7 +168,6 @@ export default function ResultsView({ groupCode, groupName, status, isLeader, fi
                       </div>
                     )}
 
-                    {/* Aksi */}
                     {isLeader && !booked && (
                       <button onClick={() => ketukPalu(p)} disabled={busy}
                         className="orange-gradient mt-4 w-full rounded-xl py-3 font-bold text-white shadow-lg transition hover:shadow-xl disabled:opacity-50">
@@ -176,7 +192,7 @@ export default function ResultsView({ groupCode, groupName, status, isLeader, fi
               {top10.map((t) => (
                 <div key={t.ranking}>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-700">{t.ranking}. {t.nama}</span>
+                    <span className="font-semibold text-slate-700">{medal(t.ranking)} {t.nama}</span>
                     <span className="font-bold text-[#0194F3]">{(t.ciScore * 100).toFixed(1)}%</span>
                   </div>
                   <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">

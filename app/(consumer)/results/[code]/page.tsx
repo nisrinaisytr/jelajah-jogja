@@ -16,7 +16,7 @@ export default async function ResultsPage({ params }: { params: { code: string }
 
   const group = await prisma.group.findUnique({
     where: { groupCode: code },
-    include: { members: { where: { removedAt: null }, include: { user: { select: { id: true, nama: true } } } } },
+    include: { members: { where: { removedAt: null }, include: { user: { select: { id: true, nama: true, no_telp: true } } } } },
   });
   if (!group) {
     return (
@@ -86,6 +86,9 @@ export default async function ResultsPage({ params }: { params: { code: string }
   const top10 = topRows.map((r) => ({ ranking: r.ranking, ciScore: r.ciScore, nama: r.destination.nama, kategori: r.destination.kategori, wilayah: r.destination.wilayah }));
 
   const members = group.members.map((m) => ({ nama: m.user.nama, isLeader: m.user.id === group.leaderId }));
+  const leaderMember = group.members.find((m) => m.user.id === group.leaderId);
+  const leaderNama = leaderMember?.user.nama ?? "Leader";
+  const leaderPhone = leaderMember?.user.no_telp ?? null;
 
   return (
     <ResultsView
@@ -97,6 +100,8 @@ export default async function ResultsPage({ params }: { params: { code: string }
       packages={packages}
       top10={top10}
       members={members}
+      leaderNama={leaderNama}
+      leaderPhone={leaderPhone}
     />
   );
 }
