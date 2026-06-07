@@ -46,6 +46,7 @@ export default function RegisterPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#0194F3] to-[#0066b3] p-4">
       <div className="my-8 w-full max-w-lg rounded-2xl bg-white p-8 shadow-md">
+        <Link href="/" className="mb-4 inline-block text-sm font-semibold text-[#0194F3] hover:underline">← Kembali ke Beranda</Link>
         <h1 className="text-2xl font-bold text-slate-800">Daftar Akun</h1>
         <p className="mt-1 text-sm text-slate-500">Buat akun untuk mulai merencanakan tour grup.</p>
 

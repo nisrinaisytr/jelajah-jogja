@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import PublicNavbar from "@/components/PublicNavbar";
+import SiteNavbar from "@/components/SiteNavbar";
 import DestImage from "@/components/DestImage";
 import { formatRupiah, kategoriEmoji } from "@/lib/destinasi-helpers";
 
@@ -42,7 +42,7 @@ export default async function DetailPage({ params }: { params: { id: string } })
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      <PublicNavbar />
+      <SiteNavbar />
 
       {/* HERO — foto jelas, overlay biru tipis (~10%) + gradient gelap di bawah agar teks terbaca */}
       <section className="relative h-[340px] text-white">

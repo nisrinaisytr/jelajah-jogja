@@ -2,7 +2,7 @@
 // Landing publik. Server Component: ambil destinasi populer dari DB untuk hero carousel + grid.
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import PublicNavbar from "@/components/PublicNavbar";
+import SiteNavbar from "@/components/SiteNavbar";
 import DestImage from "@/components/DestImage";
 import HeroCarousel from "@/components/HeroCarousel";
 import { formatRupiah } from "@/lib/destinasi-helpers";
@@ -21,7 +21,7 @@ export default async function LandingPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      <PublicNavbar />
+      <SiteNavbar />
 
       {/* HERO — foto wisata di belakang + overlay biru (lebih pekat di kiri agar teks terbaca) */}
       <section className="relative overflow-hidden text-white">
