@@ -16,11 +16,13 @@ interface Pkg {
 }
 interface Top { ranking: number; ciScore: number; nama: string; kategori: string; wilayah: string }
 
-const TIER_INFO: Record<string, { warna: string; termasuk: string[] }> = {
-  HEMAT: { warna: "text-[#10B981]", termasuk: ["Hotel kelas budget", "Bus ekonomi", "Tiket masuk semua destinasi"] },
-  STANDARD: { warna: "text-[#0194F3]", termasuk: ["Hotel kelas standar", "Bus ber-AC", "Tiket masuk + 1x makan/hari"] },
-  PREMIUM: { warna: "text-[#FF5E1F]", termasuk: ["Hotel kelas premium", "Minibus premium", "Tiket + makan + guide pribadi"] },
+// Warna per huruf paket (A/B/C) — pembeda visual antar OPSI rute (bukan tier harga)
+const LETTER_STYLE: Record<string, { teks: string; border: string; chipBg: string }> = {
+  A: { teks: "text-[#10B981]", border: "border-[#10B981]", chipBg: "bg-[#ECFDF5] text-[#10B981]" },
+  B: { teks: "text-[#0194F3]", border: "border-[#0194F3]", chipBg: "bg-[#E6F4FE] text-[#0194F3]" },
+  C: { teks: "text-[#FF5E1F]", border: "border-[#FF5E1F]", chipBg: "bg-[#FFF1EC] text-[#FF5E1F]" },
 };
+function letterOf(nama: string) { const m = nama.match(/Paket\s+([ABC])/i); return m ? m[1].toUpperCase() : "A"; }
 
 export default function ResultsView({ groupCode, groupName, status, isLeader, finalPackageId, packages, top10, members }: {
   groupCode: string; groupName: string; status: string; isLeader: boolean; finalPackageId: number | null;
@@ -61,7 +63,7 @@ export default function ResultsView({ groupCode, groupName, status, isLeader, fi
             <div className="text-sm text-blue-100">{groupName} • {groupCode}</div>
             <h1 className="text-2xl font-extrabold">{booked ? "Paket Final Telah Dipilih 🎉" : "Hasil Rekomendasi Siap!"}</h1>
             <p className="mt-1 text-sm text-blue-50">
-              {booked ? "Leader telah mengetuk palu. Selamat berlibur!" : "3 paket wisata disusun dari preferensi kolektif grup (BWM-TOPSIS)."}
+              {booked ? "Leader telah mengetuk palu. Selamat berlibur!" : "3 opsi jalur wisata berbeda — harga setara, tinggal pilih rute favorit grup."}
             </p>
           </div>
           <span className={`rounded-full px-4 py-1.5 text-sm font-bold ${isLeader ? "bg-[#FF5E1F] text-white" : "bg-white/20 text-white"}`}>
@@ -81,19 +83,25 @@ export default function ResultsView({ groupCode, groupName, status, isLeader, fi
           {packages.map((p) => {
             const isFinal = finalId === p.id;
             const dim = booked && !isFinal;
-            const info = TIER_INFO[p.variant] ?? TIER_INFO.STANDARD;
+            const letter = letterOf(p.namaPaket);
+            const st = LETTER_STYLE[letter] ?? LETTER_STYLE.A;
             const expanded = open === p.id;
+            const allStops = p.days.flatMap((d) => d.stops);
+            const wilayahList = [...new Set(allStops.map((s) => s.dest.wilayah))];
             return (
-              <div key={p.id} className={`overflow-hidden rounded-2xl border-2 bg-white shadow-sm transition ${isFinal ? "border-[#FF5E1F]" : "border-slate-100"} ${dim ? "opacity-60" : ""}`}>
+              <div key={p.id} className={`overflow-hidden rounded-2xl border-2 bg-white shadow-sm transition ${isFinal ? st.border : "border-slate-100"} ${dim ? "opacity-60" : ""}`}>
                 <button onClick={() => setOpen(expanded ? null : p.id)} className="flex w-full items-center justify-between gap-3 p-5 text-left">
-                  <div>
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className={`text-lg font-extrabold ${info.warna}`}>{p.variant}</span>
-                      {isFinal && <span className="rounded-full bg-[#FF5E1F] px-2.5 py-0.5 text-[10px] font-bold text-white">✅ TERPILIH</span>}
+                      <span className={`text-lg font-extrabold ${st.teks}`}>{p.namaPaket}</span>
+                      {isFinal && <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white ${letter === "A" ? "bg-[#10B981]" : letter === "B" ? "bg-[#0194F3]" : "bg-[#FF5E1F]"}`}>✅ TERPILIH</span>}
                     </div>
-                    <div className="text-xs text-slate-500">{p.jenisArmada} • Hotel {p.hotel.tier} • {p.durasiHari} hari</div>
+                    <div className="mt-1 text-xs text-slate-500">{allStops.length} destinasi • {p.durasiHari} hari • {p.jenisArmada}</div>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {wilayahList.map((w) => <span key={w} className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${st.chipBg}`}>📍 {w}</span>)}
+                    </div>
                   </div>
-                  <div className="text-right">
+                  <div className="shrink-0 text-right">
                     <div className="text-xl font-extrabold text-slate-900">{formatRupiah(p.hargaPerOrang)}</div>
                     <div className="text-[10px] text-slate-400">/orang • {expanded ? "tutup ▲" : "lihat detail ▼"}</div>
                   </div>
@@ -101,10 +109,7 @@ export default function ResultsView({ groupCode, groupName, status, isLeader, fi
 
                 {expanded && (
                   <div className="border-t border-slate-100 p-5">
-                    {/* Termasuk */}
-                    <div className="mb-4 flex flex-wrap gap-2">
-                      {info.termasuk.map((t) => <span key={t} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">✓ {t}</span>)}
-                    </div>
+                    <p className="mb-4 text-xs text-slate-500">Jalur ini menyusun destinasi peringkat teratas yang searah ({wilayahList.join(", ")}) agar perjalanan efisien.</p>
 
                     {/* Itinerary per hari */}
                     {p.days.map((d) => (
@@ -113,14 +118,14 @@ export default function ResultsView({ groupCode, groupName, status, isLeader, fi
                         <div className="space-y-2">
                           {d.stops.map((s) => (
                             <div key={s.urutanRute} className="flex items-center gap-3 rounded-xl bg-slate-50 p-2.5">
-                              <div className="h-12 w-16 overflow-hidden rounded-lg">
+                              <div className="h-12 w-16 shrink-0 overflow-hidden rounded-lg">
                                 <DestImage src={s.dest.imageUrl} alt={s.dest.nama} kategori={s.dest.kategori} className="h-full w-full" />
                               </div>
                               <div className="min-w-0 flex-1">
                                 <div className="truncate text-sm font-bold text-slate-800">{s.urutanRute}. {s.dest.nama}</div>
                                 <div className="text-[11px] text-slate-500">🕐 {s.estimasiJam} • 📍 {s.dest.wilayah}{s.jarakDariSebelum != null ? ` • ${s.jarakDariSebelum} km` : ""}</div>
                               </div>
-                              <div className="text-xs font-bold text-[#FF5E1F]">{formatRupiah(s.dest.hargaTiket)}</div>
+                              <div className="shrink-0 text-xs font-bold text-[#FF5E1F]">{formatRupiah(s.dest.hargaTiket)}</div>
                             </div>
                           ))}
                         </div>
@@ -130,7 +135,7 @@ export default function ResultsView({ groupCode, groupName, status, isLeader, fi
                     {/* Hotel */}
                     <div className="mb-4 rounded-xl border border-slate-100 p-3">
                       <div className="text-xs font-bold uppercase text-slate-400">🏨 Menginap</div>
-                      <div className="mt-1 text-sm font-bold text-slate-800">{p.hotel.nama} <span className="text-xs font-normal text-slate-400">({p.hotel.tier})</span></div>
+                      <div className="mt-1 text-sm font-bold text-slate-800">{p.hotel.nama}</div>
                       <div className="text-[11px] text-slate-500">⭐ {p.hotel.rating} • {p.hotel.wilayah} • {formatRupiah(p.hotel.hargaPerMalam)}/malam</div>
                     </div>
 
@@ -150,7 +155,7 @@ export default function ResultsView({ groupCode, groupName, status, isLeader, fi
                     {isLeader && !booked && (
                       <button onClick={() => ketukPalu(p)} disabled={busy}
                         className="orange-gradient mt-4 w-full rounded-xl py-3 font-bold text-white shadow-lg transition hover:shadow-xl disabled:opacity-50">
-                        {busy ? "Memproses..." : "🔨 Ketuk Palu — Pilih Paket Ini"}
+                        {busy ? "Memproses..." : `🔨 Ketuk Palu — Pilih ${p.namaPaket}`}
                       </button>
                     )}
                     {!isLeader && (

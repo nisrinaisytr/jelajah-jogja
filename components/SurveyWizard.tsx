@@ -186,15 +186,16 @@ function PickStep({ title, subtitle, items, picks, onBest, onWorst }: {
 }
 
 // ====== Slider perbandingan (label kiri, angka kanan, tooltip mengambang) ======
-function Slider({ emoji, label, anchorName, value, onChange }: { emoji?: string; label: string; anchorName: string; value: number; onChange: (v: number) => void }) {
+function Slider({ emoji, label, anchorName, anchorSide, value, onChange }: { emoji?: string; label: string; anchorName: string; anchorSide: "left" | "right"; value: number; onChange: (v: number) => void }) {
   const pct = ((value - 1) / 8) * 100;
   const tipLeft = 6 + pct * 0.88; // jaga agar tidak terpotong di tepi
   return (
     <div className="py-2.5">
       <div className="flex items-center justify-between gap-2">
         <span className="flex flex-wrap items-center gap-x-1.5 font-semibold text-slate-800">
+          {anchorSide === "left" && <span className="font-normal text-slate-400">{anchorName} vs</span>}
           {emoji && <span>{emoji}</span>}<span>{label}</span>
-          <span className="font-normal text-slate-400">vs {anchorName}</span>
+          {anchorSide === "right" && <span className="font-normal text-slate-400">vs {anchorName}</span>}
         </span>
         <span className="shrink-0 text-xl font-extrabold text-[#0194F3]">{value}</span>
       </div>
@@ -229,7 +230,7 @@ function VoteStep({ items, picks, onB2O, onO2W }: {
       <div className="rounded-2xl border border-[#10B981]/30 bg-gradient-to-b from-[#ECFDF5] to-white p-4">
         <div className="mb-1 text-sm font-bold text-[#10B981]">A · Bandingkan {bestIt?.emoji} “{bestNama}” dengan kriteria lain</div>
         {items.filter((i) => i.key !== picks.best).map((it) => (
-          <Slider key={"b" + it.key} emoji={it.emoji} label={it.nama} anchorName={bestNama} value={picks.b2o[it.key] ?? DEF} onChange={(v) => onB2O(it.key, v)} />
+          <Slider key={"b" + it.key} emoji={it.emoji} label={it.nama} anchorName={bestNama} anchorSide="left" value={picks.b2o[it.key] ?? DEF} onChange={(v) => onB2O(it.key, v)} />
         ))}
       </div>
 
@@ -240,7 +241,7 @@ function VoteStep({ items, picks, onB2O, onO2W }: {
       <div className="rounded-2xl border border-rose-300/40 bg-gradient-to-b from-[#FFF1F2] to-white p-4">
         <div className="mb-1 text-sm font-bold text-rose-500">B · Bandingkan kriteria lain dengan {worstIt?.emoji} “{worstNama}”</div>
         {items.filter((i) => i.key !== picks.worst).map((it) => (
-          <Slider key={"w" + it.key} emoji={it.emoji} label={it.nama} anchorName={worstNama} value={picks.o2w[it.key] ?? DEF} onChange={(v) => onO2W(it.key, v)} />
+          <Slider key={"w" + it.key} emoji={it.emoji} label={it.nama} anchorName={worstNama} anchorSide="right" value={picks.o2w[it.key] ?? DEF} onChange={(v) => onO2W(it.key, v)} />
         ))}
       </div>
     </div>

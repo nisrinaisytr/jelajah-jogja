@@ -49,7 +49,7 @@ export default async function ResultsPage({ params }: { params: { code: string }
   // 3 paket + hotel + itinerary
   const pkgRows = await prisma.tourPackage.findMany({
     where: { groupId: group.id },
-    orderBy: { hargaPerOrang: "asc" },
+    orderBy: { id: "asc" }, // A,B,C sesuai urutan pembuatan
     include: {
       hotel: true,
       itinerary: { orderBy: [{ hariKe: "asc" }, { urutanRute: "asc" }], include: { destination: true } },
