@@ -2,12 +2,14 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { formatRupiah } from "@/lib/destinasi-helpers";
 
 interface Member { nama: string; hasSubmitted: boolean; isLeader: boolean; isMe: boolean }
 interface Status {
   groupName: string; groupCode: string; status: string;
   members: Member[]; total: number; submitted: number; allSubmitted: boolean; calculated: boolean;
   top5: { nama: string; ciScore: number; ranking: number }[];
+  packages: { nama: string; variant: string; harga: number }[];
 }
 
 export default function WaitingRoom({ groupCode }: { groupCode: string }) {
@@ -114,10 +116,24 @@ export default function WaitingRoom({ groupCode }: { groupCode: string }) {
               </div>
             ))}
           </div>
+          {data.packages.length > 0 && (
+            <div className="mt-4 border-t border-slate-100 pt-4">
+              <h3 className="mb-3 text-sm font-bold uppercase text-slate-400">3 Paket Wisata Otomatis</h3>
+              <div className="grid gap-2 sm:grid-cols-3">
+                {data.packages.map((p) => (
+                  <div key={p.variant} className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
+                    <div className="text-xs font-bold text-[#FF5E1F]">{p.variant}</div>
+                    <div className="mt-1 text-sm font-bold text-slate-800">{formatRupiah(p.harga)}</div>
+                    <div className="text-[10px] text-slate-400">/orang</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <Link href={`/results/${groupCode}`} className="orange-gradient mt-4 block rounded-xl py-3 text-center font-bold text-white shadow-lg transition hover:shadow-xl">
-            Lihat Hasil Lengkap & Paket Wisata →
+            Lihat Hasil Lengkap & Itinerary →
           </Link>
-          <p className="mt-2 text-center text-xs text-slate-400">3 paket wisata otomatis dibuat pada tahap berikutnya.</p>
+          <p className="mt-2 text-center text-xs text-slate-400">Halaman hasil interaktif (itinerary + ketuk palu) di tahap berikutnya.</p>
         </div>
       )}
     </main>

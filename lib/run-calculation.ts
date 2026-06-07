@@ -6,8 +6,9 @@ import { prisma } from "@/lib/prisma";
 import { aggregateGroupWeights } from "@/lib/bwm-engine";
 import { computeTopsisRanking, TopsisDestinationScores } from "@/lib/topsis-engine";
 import { CRITERIA_MASTER } from "@/lib/criteria-master";
+import { generateThreePackages } from "@/lib/generate-packages";
 
-export interface CalcSummary { members: number; destinations: number; subKeys: number }
+export interface CalcSummary { members: number; destinations: number; subKeys: number; packages: number }
 
 export async function runGroupCalculation(groupId: number): Promise<CalcSummary> {
   const group = await prisma.group.findUnique({ where: { id: groupId } });
@@ -88,5 +89,11 @@ export async function runGroupCalculation(groupId: number): Promise<CalcSummary>
     }),
   ]);
 
-  return { members: userIds.length, destinations: ranking.length, subKeys: activeSubKeys.length };
+  // 6) Generate 3 paket wisata (Hemat/Standard/Premium) dari hasil TOPSIS
+  const pkg = await generateThreePackages(groupId);
+
+  // 7) Tandai grup selesai (siap dilihat di halaman hasil)
+  await prisma.group.update({ where: { id: groupId }, data: { status: "COMPLETED" } });
+
+  return { members: userIds.length, destinations: ranking.length, subKeys: activeSubKeys.length, packages: pkg.packages };
 }

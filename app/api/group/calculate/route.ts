@@ -27,8 +27,8 @@ export async function POST(req: Request) {
       prisma.groupMember.count({ where: { groupId: group.id, removedAt: null } }),
       prisma.groupMember.count({ where: { groupId: group.id, removedAt: null, hasSubmitted: true } }),
     ]);
-    if (active === 0 || active !== submitted) {
-      return NextResponse.json({ error: "Belum semua anggota mengisi kuesioner" }, { status: 400 });
+    if (active < 2 || active !== submitted) {
+      return NextResponse.json({ error: "Butuh minimal 2 anggota & semua sudah mengisi kuesioner" }, { status: 400 });
     }
 
     const summary = await runGroupCalculation(group.id);

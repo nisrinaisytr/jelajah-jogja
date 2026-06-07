@@ -35,7 +35,7 @@ export async function GET(_req: Request, { params }: { params: { code: string } 
   }));
   const total = members.length;
   const submitted = members.filter((m) => m.hasSubmitted).length;
-  const allSubmitted = total > 0 && submitted === total;
+  const allSubmitted = total >= 2 && submitted === total; // min 2 anggota
 
   const calcCount = await prisma.groupTopsisResult.count({ where: { groupId: group.id } });
   const calculated = calcCount > 0;
@@ -51,10 +51,20 @@ export async function GET(_req: Request, { params }: { params: { code: string } 
     top5 = rows.map((r) => ({ nama: r.destination.nama, ciScore: r.ciScore, ranking: r.ranking }));
   }
 
+  let packages: { nama: string; variant: string; harga: number }[] = [];
+  if (calculated) {
+    const pkgs = await prisma.tourPackage.findMany({
+      where: { groupId: group.id },
+      orderBy: { hargaPerOrang: "asc" },
+      select: { namaPaket: true, variant: true, hargaPerOrang: true },
+    });
+    packages = pkgs.map((p) => ({ nama: p.namaPaket, variant: p.variant, harga: Number(p.hargaPerOrang) }));
+  }
+
   return NextResponse.json({
     groupName: group.groupName,
     groupCode: group.groupCode,
     status: group.status,
-    members, total, submitted, allSubmitted, calculated, top5,
+    members, total, submitted, allSubmitted, calculated, top5, packages,
   });
 }

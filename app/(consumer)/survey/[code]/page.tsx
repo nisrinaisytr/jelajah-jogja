@@ -9,7 +9,6 @@ import SurveyWizard from "@/components/SurveyWizard";
 
 export const dynamic = "force-dynamic";
 
-// Nama ramah-konsumen (judul = nama master, tanpa kode K1/K2)
 const CRIT_UI: Record<string, { emoji: string }> = {
   K1: { emoji: "🌲" }, K2: { emoji: "💰" }, K3: { emoji: "🚗" }, K4: { emoji: "🚻" },
   K5: { emoji: "📸" }, K6: { emoji: "🛡️" }, K7: { emoji: "🌿" }, K8: { emoji: "👥" },
@@ -37,20 +36,17 @@ export default async function SurveyPage({ params }: { params: { code: string } 
   const group = await prisma.group.findUnique({ where: { groupCode: code } });
   if (!group) return <Notice title="Grup tidak ditemukan" desc={`Kode "${code}" tidak valid.`} href="/home" cta="Ke Beranda" />;
 
-  const member = await prisma.groupMember.findUnique({
-    where: { groupId_userId: { groupId: group.id, userId } },
-  });
+  const member = await prisma.groupMember.findUnique({ where: { groupId_userId: { groupId: group.id, userId } } });
   if (!member || member.removedAt) {
     return <Notice title="Bukan anggota grup" desc="Kamu belum tergabung di grup ini. Gabung dulu dengan kodenya." href="/join-group" cta="Gabung Grup" />;
   }
   if (member.hasSubmitted) {
-    return <Notice title="Kamu sudah mengisi kuesioner ✅" desc="Tunggu anggota lain menyelesaikan kuesioner. Pantau progres di Waiting Room." href={`/waiting-room/${code}`} cta="Ke Waiting Room" />;
+    return <Notice title="Kamu sudah mengisi kuesioner ✅" desc="Tunggu anggota lain. Pantau progres di Waiting Room." href={`/waiting-room/${code}`} cta="Ke Waiting Room" />;
   }
   if (group.status !== "IN_PROGRESS") {
-    return <Notice title="Kuesioner ditutup" desc="Grup ini sudah memasuki tahap perhitungan/hasil." href={`/results/${code}`} cta="Lihat Hasil" />;
+    return <Notice title="Kuesioner ditutup" desc="Grup ini sudah memasuki tahap hasil." href={`/results/${code}`} cta="Lihat Hasil" />;
   }
 
-  // Susun kriteria aktif + subkriteria (judul = nama, tanpa kode)
   let activeKeys: string[] = [];
   try { activeKeys = JSON.parse(group.activeCriteria); } catch { activeKeys = []; }
   const criteria = CRITERIA_MASTER
@@ -59,14 +55,8 @@ export default async function SurveyPage({ params }: { params: { code: string } 
       key: c.key,
       nama: c.nama,
       emoji: CRIT_UI[c.key]?.emoji ?? "📌",
-      sub: c.subKriteria.map((s) => ({ key: s.key, nama: s.nama, emoji: CRIT_UI[c.key]?.emoji ?? "📌" })),
+      sub: c.subKriteria.map((s) => ({ key: s.key, nama: s.nama })), // subkriteria tanpa emoji
     }));
 
-  return (
-    <SurveyWizard
-      groupCode={code}
-      groupName={group.groupName}
-      criteria={criteria}
-    />
-  );
+  return <SurveyWizard groupCode={code} groupName={group.groupName} criteria={criteria} />;
 }

@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { computeBwmWeights } from "@/lib/bwm-engine";
 import { CRITERIA_MASTER } from "@/lib/criteria-master";
+import { runGroupCalculation } from "@/lib/run-calculation";
 
 const picks = z.object({
   best: z.string().min(1),
@@ -119,9 +120,16 @@ export async function POST(req: Request) {
       prisma.groupMember.count({ where: { groupId: group.id, removedAt: null } }),
       prisma.groupMember.count({ where: { groupId: group.id, removedAt: null, hasSubmitted: true } }),
     ]);
-    const allSubmitted = activeCount > 0 && activeCount === submittedCount;
+    const allSubmitted = activeCount >= 2 && activeCount === submittedCount; // min 2 anggota (kolaboratif)
 
-    return NextResponse.json({ ok: true, allSubmitted, answers: answers.length, weights: weights.length });
+    // Anggota terakhir submit -> jalankan kalkulasi penuh (agregasi + TOPSIS + 3 paket)
+    let calculated = false;
+    if (allSubmitted) {
+      try { await runGroupCalculation(group.id); calculated = true; }
+      catch (e) { console.error("auto-calc gagal:", e); }
+    }
+
+    return NextResponse.json({ ok: true, allSubmitted, calculated, answers: answers.length, weights: weights.length });
   } catch (e) {
     console.error("survey/submit error:", e);
     return NextResponse.json({ error: "Terjadi kesalahan server" }, { status: 500 });
