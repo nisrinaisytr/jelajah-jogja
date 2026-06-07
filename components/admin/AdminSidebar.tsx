@@ -26,7 +26,7 @@ export default function AdminSidebar({ role, nama }: { role: string; nama: strin
   const items = MENUS.filter((m) => !m.ownerOnly || role === "OWNER");
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-slate-800 bg-slate-900 text-slate-300">
+    <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-slate-800 bg-slate-900 text-slate-300">
       <div className="flex items-center gap-2 px-5 py-5">
         <span className="text-2xl">🏝️</span>
         <div>
@@ -35,7 +35,7 @@ export default function AdminSidebar({ role, nama }: { role: string; nama: strin
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3 py-2">
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
         {items.map((m) => {
           const active = pathname === m.path || pathname.startsWith(m.path + "/");
           return (

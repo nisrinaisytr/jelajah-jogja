@@ -12,9 +12,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (u.role !== "OWNER" && u.role !== "STAFF") redirect("/");
 
   return (
-    <div className="flex min-h-screen bg-[#F1F5F9]">
+    <div className="flex h-screen overflow-hidden bg-[#F1F5F9]">
       <AdminSidebar role={u.role} nama={u.nama} />
-      <div className="flex-1 overflow-x-hidden">{children}</div>
+      <main className="flex-1 overflow-y-auto">{children}</main>
     </div>
   );
 }
