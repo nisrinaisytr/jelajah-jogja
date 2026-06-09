@@ -1,8 +1,7 @@
 // app/(consumer)/create-group/page.tsx
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CRITERIA_MASTER, WAJIB_CRITERIA, MIN_OPSIONAL } from "@/lib/criteria-master";
 
 const DURASI = [
   { val: 1, label: "1 Hari", sub: "One Day Trip", emoji: "☀️" },
@@ -10,20 +9,12 @@ const DURASI = [
   { val: 3, label: "3D2N", sub: "3 Hari 2 Malam", emoji: "🏕️" },
 ];
 
-// Tampilan ramah-konsumen (tanpa kode K1/K2). Judul pakai nama resmi dari master.
-const CRIT_UI: Record<string, { emoji: string; desc: string }> = {
-  K1: { emoji: "🌲", desc: "Jenis & tema wisata" },
-  K2: { emoji: "💰", desc: "Keterjangkauan harga" },
-  K3: { emoji: "🚗", desc: "Kemudahan akses" },
-  K4: { emoji: "🚻", desc: "Sanitasi & kenyamanan" },
-  K5: { emoji: "📸", desc: "Visual & pengalaman" },
-  K6: { emoji: "🛡️", desc: "SOP & keselamatan" },
-  K7: { emoji: "🌿", desc: "Lingkungan & kelestarian" },
-  K8: { emoji: "👥", desc: "Kapasitas rombongan" },
-};
+// Emoji ramah-konsumen per kriteria bawaan; kriteria baru pakai default.
+const CRIT_EMOJI: Record<string, string> = { K1: "🌲", K2: "💰", K3: "🚗", K4: "🚻", K5: "📸", K6: "🛡️", K7: "🌿", K8: "👥" };
+const emojiOf = (k: string) => CRIT_EMOJI[k] ?? "🎯";
 
-const OPSIONAL = CRITERIA_MASTER.filter((c) => !c.wajib);
-const WAJIB = CRITERIA_MASTER.filter((c) => c.wajib);
+interface Sub { key: string; nama: string }
+interface Crit { key: string; nama: string; wajib: boolean; deskripsi: string | null; subKriteria: Sub[] }
 
 function Toggle({ on, color }: { on: boolean; color: string }) {
   return (
@@ -34,6 +25,10 @@ function Toggle({ on, color }: { on: boolean; color: string }) {
 }
 
 export default function CreateGroupPage() {
+  const [tree, setTree] = useState<Crit[]>([]);
+  const [minOpsional, setMinOpsional] = useState(2);
+  const [loadingTree, setLoadingTree] = useState(true);
+
   const [step, setStep] = useState(1);
   const [groupName, setGroupName] = useState("");
   const [quota, setQuota] = useState("4");
@@ -44,15 +39,26 @@ export default function CreateGroupPage() {
   const [code, setCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  useEffect(() => {
+    fetch("/api/criteria", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => { setTree(d.criteria ?? []); if (d.minOpsional) setMinOpsional(d.minOpsional); })
+      .catch(() => {})
+      .finally(() => setLoadingTree(false));
+  }, []);
+
+  const WAJIB = useMemo(() => tree.filter((c) => c.wajib), [tree]);
+  const OPSIONAL = useMemo(() => tree.filter((c) => !c.wajib), [tree]);
+
   const quotaNum = parseInt(quota || "0", 10);
   const step1Valid = groupName.trim().length > 0 && quotaNum >= 2;
   const step2Valid = durasi !== null;
-  const canGenerate = opsional.length >= MIN_OPSIONAL;
+  const canGenerate = opsional.length >= minOpsional;
   const totalDipilih = WAJIB.length + opsional.length;
 
   const activeCriteria = useMemo(
-    () => CRITERIA_MASTER.filter((c) => c.wajib || opsional.includes(c.key)).map((c) => c.key),
-    [opsional]
+    () => tree.filter((c) => c.wajib || opsional.includes(c.key)).map((c) => c.key),
+    [tree, opsional]
   );
 
   function toggleOpsional(key: string) {
@@ -93,10 +99,8 @@ export default function CreateGroupPage() {
             <div className="text-xs font-bold uppercase text-[#0277C2]">Kode Grup</div>
             <div className="mt-1 font-mono text-4xl font-extrabold tracking-widest text-[#0194F3]">{code}</div>
           </div>
-          <button
-            onClick={copyCode}
-            className={`mb-3 w-full rounded-xl border-2 py-2.5 font-semibold transition ${copied ? "border-[#10B981] bg-[#ECFDF5] text-[#10B981]" : "border-slate-200 text-slate-700 hover:bg-slate-50"}`}
-          >
+          <button onClick={copyCode}
+            className={`mb-3 w-full rounded-xl border-2 py-2.5 font-semibold transition ${copied ? "border-[#10B981] bg-[#ECFDF5] text-[#10B981]" : "border-slate-200 text-slate-700 hover:bg-slate-50"}`}>
             {copied ? "✓ Kode tersalin!" : "📋 Salin Kode"}
           </button>
           <Link href={`/survey/${code}`} className="orange-gradient block rounded-xl py-3 font-bold text-white shadow-lg transition hover:shadow-xl">
@@ -125,7 +129,6 @@ export default function CreateGroupPage() {
 
       {err && <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{err}</div>}
 
-      {/* STEP 1 & 2 dalam card */}
       {step === 1 && (
         <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
           <div className="space-y-4">
@@ -173,55 +176,60 @@ export default function CreateGroupPage() {
         </div>
       )}
 
-      {/* STEP 3 — Pre-filtering ala wireframe */}
       {step === 3 && (
         <div>
           <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
             <div className="text-center">
               <h2 className="text-xl font-extrabold text-slate-900">Pilih Kriteria untuk Grup Anda</h2>
-              <p className="mt-1 text-sm text-slate-500">Pilih minimal {MIN_OPSIONAL} kriteria opsional. 3 kriteria wajib otomatis aktif. Total: 5–8 kriteria.</p>
+              <p className="mt-1 text-sm text-slate-500">Pilih minimal {minOpsional} kriteria opsional. {WAJIB.length} kriteria wajib otomatis aktif. Total tersedia: {tree.length} kriteria.</p>
             </div>
 
-            {/* WAJIB */}
-            <div className="mt-6 flex items-center gap-3">
-              <span className="rounded-full bg-[#FFF1EC] px-3 py-1 text-xs font-bold text-[#FF5E1F]">🔒 WAJIB AKTIF</span>
-              <span className="h-px flex-1 bg-slate-100" />
-            </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-3">
-              {WAJIB.map((c) => (
-                <div key={c.key} className="rounded-2xl border-2 border-[#FF5E1F]/40 bg-[#FFF1EC] p-4">
-                  <div className="flex items-start justify-between">
-                    <span className="text-3xl">{CRIT_UI[c.key]?.emoji}</span>
-                    <Toggle on color="bg-[#FF5E1F]" />
-                  </div>
-                  <div className="mt-3 font-bold text-slate-800">{c.nama}</div>
-                  <div className="text-xs text-slate-500">{CRIT_UI[c.key]?.desc}</div>
+            {loadingTree ? (
+              <div className="py-10 text-center text-slate-400">Memuat kriteria...</div>
+            ) : (
+              <>
+                {/* WAJIB */}
+                <div className="mt-6 flex items-center gap-3">
+                  <span className="rounded-full bg-[#FFF1EC] px-3 py-1 text-xs font-bold text-[#FF5E1F]">🔒 WAJIB AKTIF</span>
+                  <span className="h-px flex-1 bg-slate-100" />
                 </div>
-              ))}
-            </div>
-
-            {/* OPSIONAL */}
-            <div className="mt-7 flex items-center gap-3">
-              <span className="rounded-full bg-[#E6F4FE] px-3 py-1 text-xs font-bold text-[#0277C2]">⚙️ OPSIONAL (pilih min {MIN_OPSIONAL})</span>
-              <span className="h-px flex-1 bg-slate-100" />
-              <span className={`text-xs font-bold ${canGenerate ? "text-[#10B981]" : "text-[#F59E0B]"}`}>{opsional.length} dari {OPSIONAL.length} dipilih</span>
-            </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {OPSIONAL.map((c) => {
-                const on = opsional.includes(c.key);
-                return (
-                  <button key={c.key} onClick={() => toggleOpsional(c.key)}
-                    className={`rounded-2xl border-2 p-4 text-left transition ${on ? "border-[#0194F3] bg-[#E6F4FE]" : "border-slate-200 hover:border-slate-300"}`}>
-                    <div className="flex items-start justify-between">
-                      <span className="text-3xl">{CRIT_UI[c.key]?.emoji}</span>
-                      <Toggle on={on} color="bg-[#0194F3]" />
+                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                  {WAJIB.map((c) => (
+                    <div key={c.key} className="rounded-2xl border-2 border-[#FF5E1F]/40 bg-[#FFF1EC] p-4">
+                      <div className="flex items-start justify-between">
+                        <span className="text-3xl">{emojiOf(c.key)}</span>
+                        <Toggle on color="bg-[#FF5E1F]" />
+                      </div>
+                      <div className="mt-3 font-bold text-slate-800">{c.nama}</div>
+                      {c.deskripsi && <div className="text-xs text-slate-500">{c.deskripsi}</div>}
                     </div>
-                    <div className="mt-3 font-bold text-slate-800">{c.nama}</div>
-                    <div className="text-xs text-slate-500">{CRIT_UI[c.key]?.desc}</div>
-                  </button>
-                );
-              })}
-            </div>
+                  ))}
+                </div>
+
+                {/* OPSIONAL */}
+                <div className="mt-7 flex items-center gap-3">
+                  <span className="rounded-full bg-[#E6F4FE] px-3 py-1 text-xs font-bold text-[#0277C2]">⚙️ OPSIONAL (pilih min {minOpsional})</span>
+                  <span className="h-px flex-1 bg-slate-100" />
+                  <span className={`text-xs font-bold ${canGenerate ? "text-[#10B981]" : "text-[#F59E0B]"}`}>{opsional.length} dari {OPSIONAL.length} dipilih</span>
+                </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {OPSIONAL.map((c) => {
+                    const on = opsional.includes(c.key);
+                    return (
+                      <button key={c.key} onClick={() => toggleOpsional(c.key)}
+                        className={`rounded-2xl border-2 p-4 text-left transition ${on ? "border-[#0194F3] bg-[#E6F4FE]" : "border-slate-200 hover:border-slate-300"}`}>
+                        <div className="flex items-start justify-between">
+                          <span className="text-3xl">{emojiOf(c.key)}</span>
+                          <Toggle on={on} color="bg-[#0194F3]" />
+                        </div>
+                        <div className="mt-3 font-bold text-slate-800">{c.nama}</div>
+                        {c.deskripsi && <div className="text-xs text-slate-500">{c.deskripsi}</div>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
 
           {/* Summary bar */}
@@ -229,7 +237,7 @@ export default function CreateGroupPage() {
             <div className="flex items-center gap-3">
               <span className={`flex h-12 w-12 items-center justify-center rounded-xl text-lg font-extrabold text-white ${canGenerate ? "bg-[#10B981]" : "bg-slate-400"}`}>{totalDipilih}</span>
               <div>
-                <div className="font-bold text-slate-800">{totalDipilih} dari 8 kriteria dipilih</div>
+                <div className="font-bold text-slate-800">{totalDipilih} dari {tree.length} kriteria dipilih</div>
                 <div className="text-xs text-slate-500">{WAJIB.length} wajib + {opsional.length} opsional</div>
               </div>
             </div>

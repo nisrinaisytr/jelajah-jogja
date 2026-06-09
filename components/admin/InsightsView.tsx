@@ -30,9 +30,11 @@ export default function InsightsView({ popular, kategori, low, durasi }: { popul
   const donutBg = stops.length ? `conic-gradient(${stops.join(", ")})` : "conic-gradient(#E2E8F0 0% 100%)";
 
   return (
-    <div className="px-8 py-6">
-      <h1 className="text-2xl font-extrabold text-slate-900">💡 Operational Insights</h1>
-      <p className="text-sm text-slate-500">Pola minat wisata dari hasil agregasi semua grup.</p>
+    <div className="px-8 pb-6">
+      <div className="sticky top-0 z-20 -mx-8 border-b border-slate-200/70 bg-[#F1F5F9] px-8 pb-3 pt-6">
+        <h1 className="text-2xl font-extrabold text-slate-900">💡 Operational Insights</h1>
+        <p className="text-sm text-slate-500">Pola minat wisata dari hasil agregasi semua grup.</p>
+      </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         {/* Top 10 destinasi */}

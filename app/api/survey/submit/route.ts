@@ -6,7 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { computeBwmWeights } from "@/lib/bwm-engine";
-import { CRITERIA_MASTER } from "@/lib/criteria-master";
+import { getCriteriaTree } from "@/lib/criteria-store";
 import { runGroupCalculation } from "@/lib/run-calculation";
 
 const picks = z.object({
@@ -53,6 +53,8 @@ export async function POST(req: Request) {
     let activeKeys: string[] = [];
     try { activeKeys = JSON.parse(group.activeCriteria); } catch { activeKeys = []; }
 
+    const critTree = await getCriteriaTree();
+
     // Validasi: best/worst kriteria harus termasuk activeCriteria
     if (!activeKeys.includes(criteria.best) || !activeKeys.includes(criteria.worst)) {
       return NextResponse.json({ error: "Pilihan kriteria tidak valid" }, { status: 400 });
@@ -94,7 +96,7 @@ export async function POST(req: Request) {
     // Level 2: subkriteria tiap kriteria aktif
     for (const ck of activeKeys) {
       const sub = subs[ck];
-      const master = CRITERIA_MASTER.find((c) => c.key === ck);
+      const master = critTree.find((c) => c.key === ck);
       if (!sub || !master) return NextResponse.json({ error: `Jawaban subkriteria ${ck} kurang` }, { status: 400 });
       const subKeys = master.subKriteria.map((s) => s.key);
       if (!subKeys.includes(sub.best) || !subKeys.includes(sub.worst)) {
@@ -120,7 +122,7 @@ export async function POST(req: Request) {
       prisma.groupMember.count({ where: { groupId: group.id, removedAt: null } }),
       prisma.groupMember.count({ where: { groupId: group.id, removedAt: null, hasSubmitted: true } }),
     ]);
-    const allSubmitted = activeCount === group.totalQuota && submittedCount === activeCount && activeCount >= 2; // kuota penuh + semua submit
+    const allSubmitted = activeCount >= 2 && activeCount === submittedCount; // min 2 anggota (kolaboratif)
 
     // Anggota terakhir submit -> jalankan kalkulasi penuh (agregasi + TOPSIS + 3 paket)
     let calculated = false;

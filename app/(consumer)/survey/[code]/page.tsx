@@ -4,7 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { CRITERIA_MASTER } from "@/lib/criteria-master";
+import { getCriteriaTree } from "@/lib/criteria-store";
 import SurveyWizard from "@/components/SurveyWizard";
 
 export const dynamic = "force-dynamic";
@@ -49,7 +49,8 @@ export default async function SurveyPage({ params }: { params: { code: string } 
 
   let activeKeys: string[] = [];
   try { activeKeys = JSON.parse(group.activeCriteria); } catch { activeKeys = []; }
-  const criteria = CRITERIA_MASTER
+  const critTree = await getCriteriaTree();
+  const criteria = critTree
     .filter((c) => activeKeys.includes(c.key))
     .map((c) => ({
       key: c.key,

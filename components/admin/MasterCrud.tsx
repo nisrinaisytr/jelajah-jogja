@@ -9,8 +9,8 @@ export type Filter = { name: string; label: string; options: string[] };
 
 type Row = Record<string, any>;
 
-export default function MasterCrud({ title, icon, endpoint, columns, fields, filters = [], searchKeys, desc }: {
-  title: string; icon: string; endpoint: string; columns: Column[]; fields: Field[]; filters?: Filter[]; searchKeys: string[]; desc?: string;
+export default function MasterCrud({ title, icon, endpoint, columns, fields, filters = [], searchKeys, desc, stickyTop = 0 }: {
+  title: string; icon: string; endpoint: string; columns: Column[]; fields: Field[]; filters?: Filter[]; searchKeys: string[]; desc?: string; stickyTop?: number;
 }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,8 +58,7 @@ export default function MasterCrud({ title, icon, endpoint, columns, fields, fil
       const d = await r.json();
       if (!r.ok) { setErr(d.error ?? "Gagal menyimpan"); return; }
       setModal(null); load();
-    } catch { setErr("Kesalahan jaringan"); }
-    finally { setBusy(false); }
+    } catch { setErr("Kesalahan jaringan"); } finally { setBusy(false); }
   }
 
   async function remove(row: Row) {
@@ -81,51 +80,54 @@ export default function MasterCrud({ title, icon, endpoint, columns, fields, fil
   }
 
   return (
-    <div className="px-8 py-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-extrabold text-slate-900">{icon} {title}</h1>
-          {desc && <p className="text-sm text-slate-500">{desc}</p>}
+    <div>
+      {/* Header sticky: judul + toolbar tetap terlihat saat daftar discroll */}
+      <div className="sticky z-20 border-b border-slate-200/70 bg-[#F1F5F9] px-8 pb-3 pt-6" style={{ top: stickyTop }}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-extrabold text-slate-900">{icon} {title}</h1>
+            {desc && <p className="text-sm text-slate-500">{desc}</p>}
+          </div>
+          <button onClick={openAdd} className="orange-gradient rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow-lg transition hover:shadow-xl">+ Tambah</button>
         </div>
-        <button onClick={openAdd} className="orange-gradient rounded-xl px-4 py-2.5 text-sm font-bold text-white shadow-lg transition hover:shadow-xl">+ Tambah</button>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 Cari nama..."
+            className="w-full max-w-xs rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm focus:border-[#0194F3] focus:outline-none" />
+          {filters.map((f) => (
+            <select key={f.name} value={filterVal[f.name] ?? ""} onChange={(e) => setFilterVal((s) => ({ ...s, [f.name]: e.target.value }))}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-[#0194F3] focus:outline-none">
+              <option value="">Semua {f.label}</option>
+              {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
+            </select>
+          ))}
+          <span className="ml-auto text-sm text-slate-400">{filtered.length} data</span>
+        </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="mt-5 flex flex-wrap items-center gap-3">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 Cari nama..."
-          className="w-full max-w-xs rounded-xl border border-slate-200 px-4 py-2 text-sm focus:border-[#0194F3] focus:outline-none" />
-        {filters.map((f) => (
-          <select key={f.name} value={filterVal[f.name] ?? ""} onChange={(e) => setFilterVal((s) => ({ ...s, [f.name]: e.target.value }))}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-[#0194F3] focus:outline-none">
-            <option value="">Semua {f.label}</option>
-            {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
-          </select>
-        ))}
-        <span className="ml-auto text-sm text-slate-400">{filtered.length} data</span>
-      </div>
-
-      {/* Tabel */}
-      <div className="mt-4 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase text-slate-400">
-            <tr>{columns.map((c) => <th key={c.key} className="px-4 py-3">{c.label}</th>)}<th className="px-4 py-3 text-right">Aksi</th></tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={columns.length + 1} className="px-4 py-10 text-center text-slate-400">Memuat...</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={columns.length + 1} className="px-4 py-10 text-center text-slate-400">Tidak ada data.</td></tr>
-            ) : filtered.map((row) => (
-              <tr key={row.id} className="border-t border-slate-100 hover:bg-slate-50/50">
-                {columns.map((c) => <td key={c.key} className="px-4 py-3 text-slate-700">{fmt(row, c)}</td>)}
-                <td className="px-4 py-3 text-right">
-                  <button onClick={() => openEdit(row)} className="mr-2 rounded-lg bg-[#E6F4FE] px-2.5 py-1 text-xs font-bold text-[#0277C2] hover:brightness-95">✏️ Edit</button>
-                  <button onClick={() => remove(row)} className="rounded-lg bg-red-50 px-2.5 py-1 text-xs font-bold text-red-500 hover:bg-red-100">🗑️</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* Tabel (yang discroll) */}
+      <div className="px-8 pb-6 pt-4">
+        <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-left text-xs uppercase text-slate-400">
+              <tr>{columns.map((c) => <th key={c.key} className="px-4 py-3">{c.label}</th>)}<th className="px-4 py-3 text-right">Aksi</th></tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={columns.length + 1} className="px-4 py-10 text-center text-slate-400">Memuat...</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={columns.length + 1} className="px-4 py-10 text-center text-slate-400">Tidak ada data.</td></tr>
+              ) : filtered.map((row) => (
+                <tr key={row.id} className="border-t border-slate-100 hover:bg-slate-50/50">
+                  {columns.map((c) => <td key={c.key} className="px-4 py-3 text-slate-700">{fmt(row, c)}</td>)}
+                  <td className="px-4 py-3 text-right">
+                    <button onClick={() => openEdit(row)} className="mr-2 rounded-lg bg-[#E6F4FE] px-2.5 py-1 text-xs font-bold text-[#0277C2] hover:brightness-95">✏️ Edit</button>
+                    <button onClick={() => remove(row)} className="rounded-lg bg-red-50 px-2.5 py-1 text-xs font-bold text-red-500 hover:bg-red-100">🗑️</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Modal form */}
@@ -141,30 +143,26 @@ export default function MasterCrud({ title, icon, endpoint, columns, fields, fil
               {fields.map((f) => (
                 <div key={f.name} className={f.full || f.type === "textarea" ? "sm:col-span-2" : ""}>
                   <label className="mb-1 block text-xs font-semibold text-slate-500">{f.label}{f.required && <span className="text-red-400"> *</span>}</label>
-                  {f.type === "select" ? (
+                  {f.type === "textarea" ? (
+                    <textarea value={modal.data[f.name] ?? ""} onChange={(e) => setModal({ ...modal, data: { ...modal.data, [f.name]: e.target.value } })}
+                      rows={3} placeholder={f.placeholder} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-[#0194F3] focus:outline-none" />
+                  ) : f.type === "select" ? (
                     <select value={modal.data[f.name] ?? ""} onChange={(e) => setModal({ ...modal, data: { ...modal.data, [f.name]: e.target.value } })}
                       className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-[#0194F3] focus:outline-none">
                       {f.options?.map((o) => <option key={o} value={o}>{o}</option>)}
                     </select>
-                  ) : f.type === "textarea" ? (
-                    <textarea value={modal.data[f.name] ?? ""} rows={2} placeholder={f.placeholder}
-                      onChange={(e) => setModal({ ...modal, data: { ...modal.data, [f.name]: e.target.value } })}
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-[#0194F3] focus:outline-none" />
                   ) : f.type === "checkbox" ? (
-                    <label className="flex items-center gap-2 pt-2 text-sm text-slate-600">
-                      <input type="checkbox" checked={!!modal.data[f.name]} onChange={(e) => setModal({ ...modal, data: { ...modal.data, [f.name]: e.target.checked } })} /> Ya
-                    </label>
+                    <label className="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" checked={!!modal.data[f.name]} onChange={(e) => setModal({ ...modal, data: { ...modal.data, [f.name]: e.target.checked } })} /> Ya</label>
                   ) : (
-                    <input type={f.type} step={f.step} value={modal.data[f.name] ?? ""} placeholder={f.placeholder}
-                      onChange={(e) => setModal({ ...modal, data: { ...modal.data, [f.name]: f.type === "number" ? e.target.value : e.target.value } })}
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-[#0194F3] focus:outline-none" />
+                    <input type={f.type} step={f.step} value={modal.data[f.name] ?? ""} onChange={(e) => setModal({ ...modal, data: { ...modal.data, [f.name]: e.target.value } })}
+                      placeholder={f.placeholder} className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-[#0194F3] focus:outline-none" />
                   )}
-                  {f.help && <p className="mt-1 text-[10px] text-slate-400">{f.help}</p>}
+                  {f.help && <p className="mt-1 text-[11px] text-slate-400">{f.help}</p>}
                 </div>
               ))}
             </div>
             <div className="mt-5 flex justify-end gap-2">
-              <button onClick={() => setModal(null)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-500">Batal</button>
+              <button onClick={() => setModal(null)} className="rounded-xl px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100">Batal</button>
               <button onClick={save} disabled={busy} className="rounded-xl bg-[#0194F3] px-5 py-2 text-sm font-bold text-white hover:bg-[#0277C2] disabled:opacity-50">{busy ? "Menyimpan..." : "Simpan"}</button>
             </div>
           </div>

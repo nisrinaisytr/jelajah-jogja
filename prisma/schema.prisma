@@ -389,3 +389,26 @@ model TourPackageDetail {
   @@index([tourPackageId])
   @@index([destinationId])
 }
+
+// =========================================================================
+// MODULE 8: MASTER KRITERIA & SUBKRITERIA (DB-driven, bisa CRUD oleh admin)
+// =========================================================================
+
+model Criteria {
+  key         String        @id @db.VarChar(10)   // K1..K8 atau key baru
+  nama        String        @db.VarChar(120)
+  deskripsi   String?       @db.Text
+  wajib       Boolean       @default(false)
+  urutan      Int           @default(0)
+  subKriteria SubCriteria[]
+}
+
+model SubCriteria {
+  key         String   @id @db.VarChar(15)        // K1_S1..K8_S5
+  criteriaKey String   @db.VarChar(10)
+  criteria    Criteria @relation(fields: [criteriaKey], references: [key], onDelete: Cascade)
+  nama        String   @db.VarChar(120)
+  urutan      Int      @default(0)
+
+  @@index([criteriaKey])
+}
